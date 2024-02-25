@@ -90,6 +90,30 @@ class DeviceApps {
     }
   }
 
+  static Future<Application?>  getAppByApkFile(String filePath, [
+    bool includeAppIcon = false,
+  ]) async {
+    if (filePath.isEmpty) {
+      throw Exception('File path can not be empty');
+    }
+    try {
+      final Object? app = await _methodChannel.invokeMethod(
+          'getAppByFilePath', <String, Object>{
+        'path': filePath,
+        'include_app_icon': includeAppIcon
+      });
+
+      if (app != null && app is Map<dynamic, dynamic>) {
+        return Application._(app);
+      } else {
+        return null;
+      }
+    } catch (err) {
+      print(err);
+      return null;
+    }
+  }
+
   /// Returns whether a given [packageName] is installed on the device
   /// You will then receive in return a boolean
   static Future<bool> isAppInstalled(String packageName) {
@@ -235,7 +259,7 @@ class Application extends _BaseApplication {
         apkFilePath = map['apk_file_path'] as String,
         versionName = map['version_name'] as String?,
         versionCode = map['version_code'] as int,
-        dataDir = map['data_dir'] as String,
+        dataDir = map['data_dir'] as String?,
         systemApp = map['system_app'] as bool,
         installTimeMillis = map['install_time'] as int,
         updateTimeMillis = map['update_time'] as int,

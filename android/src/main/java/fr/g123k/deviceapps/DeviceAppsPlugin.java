@@ -104,6 +104,16 @@ public class DeviceAppsPlugin implements
                     result.success(getApp(packageName, includeAppIcon));
                 }
                 break;
+            case "getAppByFilePath":
+                // boolean includeAppIcons = call.hasArgument("include_app_icons") && (Boolean) (call.argument("include_app_icons"));
+                if (!call.hasArgument("path")) {
+                    result.error("ERROR", "Empty or invalid argument", null);
+                } else {
+                    String apkFilePath = call.argument("path");
+                    boolean includeAppIcon = call.hasArgument("include_app_icon") && (Boolean) (call.argument("include_app_icon"));
+                    result.success(getAppByPath(apkFilePath, includeAppIcon));
+                }
+                break;
             case "isAppInstalled":
                 if (!call.hasArgument("package_name") || TextUtils.isEmpty(call.argument("package_name").toString())) {
                     result.error("ERROR", "Empty or null package name", null);
@@ -245,6 +255,20 @@ public class DeviceAppsPlugin implements
         }
     }
 
+    private Map<String, Object> getAppByPath(String apkPath, boolean includeAppIcon) {
+        PackageManager packageManager = context.getPackageManager();
+        PackageInfo packageInfo = packageManager.getPackageArchiveInfo(apkPath, 0);
+        if (packageInfo==null){
+            return null;
+        }
+        packageInfo.applicationInfo.sourceDir = apkPath;
+        packageInfo.applicationInfo.publicSourceDir = apkPath;
+        return getAppData(packageManager,
+                packageInfo,
+                packageInfo.applicationInfo,
+                includeAppIcon);
+    }
+
     private Map<String, Object> getAppData(PackageManager packageManager,
                                            PackageInfo pInfo,
                                            ApplicationInfo applicationInfo,
@@ -266,11 +290,18 @@ public class DeviceAppsPlugin implements
         }
 
         if (includeAppIcon) {
+            Drawable icon = null;
             try {
-                Drawable icon = packageManager.getApplicationIcon(pInfo.packageName);
+                icon = packageManager.getApplicationIcon(pInfo.packageName);
+            } catch (PackageManager.NameNotFoundException ignored) {
+                try {
+                    icon = applicationInfo.loadIcon(packageManager);
+                } catch (Exception ignored1) {
+                }
+            }
+            if (icon!=null){
                 String encodedImage = encodeToBase64(getBitmapFromDrawable(icon), Bitmap.CompressFormat.PNG, 100);
                 map.put(AppDataConstants.APP_ICON, encodedImage);
-            } catch (PackageManager.NameNotFoundException ignored) {
             }
         }
 
